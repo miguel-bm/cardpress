@@ -3,6 +3,8 @@
 // Ported 1:1 from public/app.js — preserves all rendering math exactly.
 // ---------------------------------------------------------------------------
 
+import { rgb } from "pdf-lib";
+import type { PDFPage } from "pdf-lib";
 import type { AlbumDetail, CardSettings } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -693,28 +695,8 @@ export function renderExportCanvas(
 // a minimal duck-type so this module does not import pdf-lib directly.
 // ---------------------------------------------------------------------------
 
-/** Minimal subset of pdf-lib PDFPage used by the grid/crop helpers */
-interface PdfPageLike {
-  drawLine(options: {
-    start: { x: number; y: number };
-    end: { x: number; y: number };
-    thickness: number;
-    color: { red: number; green: number; blue: number };
-  }): void;
-}
-
-interface RgbColor {
-  red: number;
-  green: number;
-  blue: number;
-}
-
-function rgbColor(r: number, g: number, b: number): RgbColor {
-  return { red: r, green: g, blue: b };
-}
-
 export function drawGridGuides(
-  page: PdfPageLike,
+  page: PDFPage,
   pageHeight: number,
   originX: number,
   originYTop: number,
@@ -724,7 +706,7 @@ export function drawGridGuides(
   cols: number,
   rows: number,
 ): void {
-  const color = rgbColor(0.78, 0.78, 0.78);
+  const color = rgb(0.78, 0.78, 0.78);
 
   for (let col = 0; col <= cols; col += 1) {
     const x = originX + col * (cellW + gap) - (col === cols ? gap : 0);
@@ -758,14 +740,14 @@ export interface CropMarkOptions {
 }
 
 export function drawCropMarksForCard(
-  page: PdfPageLike,
+  page: PDFPage,
   trimX: number,
   trimY: number,
   trimW: number,
   trimH: number,
   options: CropMarkOptions,
 ): void {
-  const color = rgbColor(0.15, 0.15, 0.15);
+  const color = rgb(0.15, 0.15, 0.15);
   const length = options.lengthPt;
   const offset = options.offsetPt;
   const thickness = 0.45;

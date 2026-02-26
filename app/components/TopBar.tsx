@@ -19,7 +19,7 @@ export default function TopBar() {
 
   return (
     <header className="sticky top-0 z-50 bg-surface/80 backdrop-blur-lg border-b border-border">
-      <div className="max-w-[1440px] mx-auto px-6 h-16 flex items-center gap-6">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 flex flex-wrap items-center gap-x-6 gap-y-2 py-2 sm:py-0 sm:h-16">
         {/* Left: Brand */}
         <Link
           to="/"
@@ -28,13 +28,8 @@ export default function TopBar() {
           Album Cards
         </Link>
 
-        {/* Center: SearchBar (only on design page) */}
-        <div className="flex-1 flex justify-center">
-          {location.pathname === "/" && <SearchBar />}
-        </div>
-
-        {/* Right: Navigation */}
-        <nav className="flex-shrink-0 flex items-center gap-1">
+        {/* Right: Navigation (stays on same line as brand) */}
+        <nav className="flex-shrink-0 flex items-center gap-1 ml-auto md:ml-0 md:order-last">
           {NAV_LINKS.map((link) => {
             const isActive = location.pathname === link.to;
             return (
@@ -42,7 +37,7 @@ export default function TopBar() {
                 key={link.to}
                 to={link.to}
                 className={[
-                  "px-3.5 py-1.5 rounded-full text-sm font-medium",
+                  "px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-medium",
                   "transition-all duration-150",
                   isActive
                     ? "bg-accent text-white"
@@ -54,6 +49,11 @@ export default function TopBar() {
             );
           })}
         </nav>
+
+        {/* Center: SearchBar (only on design page) — wraps to full width on mobile */}
+        <div className="w-full md:w-auto md:flex-1 md:flex md:justify-center order-last md:order-none">
+          {location.pathname === "/" && <SearchBar />}
+        </div>
       </div>
     </header>
   );

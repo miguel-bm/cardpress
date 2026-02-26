@@ -6,7 +6,7 @@ import SettingSlider from "../ui/SettingSlider";
 export default function FrameQrSection() {
   return (
     <AccordionSection value="frame-qr" title="Frame & QR">
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
         <SettingSwitch settingKey="borderEnabled" label="Border" />
         <SettingColor settingKey="borderColor" label="Border Color" />
         <SettingSlider

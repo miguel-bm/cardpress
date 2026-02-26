@@ -43,7 +43,7 @@ export default function BatchPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
       {/* Header */}
       <div className="space-y-2 mb-8">
         <h1 className="text-2xl font-semibold text-text">Batch Generator</h1>

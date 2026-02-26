@@ -42,7 +42,7 @@ function ButtonSpinner() {
 
 const BTN_CLASS = [
   "rounded-lg border border-border bg-surface text-sm font-medium",
-  "px-3 py-2",
+  "px-3 py-2.5 min-h-[44px]",
   "hover:bg-surface-alt transition-colors",
   "disabled:opacity-40 disabled:cursor-not-allowed",
   "flex items-center justify-center gap-1.5",
@@ -125,7 +125,7 @@ export default function ExportActions() {
   const disabled = !album || loadingKey !== null;
 
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
       <motion.button
         type="button"
         className={BTN_CLASS}

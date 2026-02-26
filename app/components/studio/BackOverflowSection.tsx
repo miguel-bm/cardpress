@@ -11,7 +11,7 @@ const overflowModeOptions = [
 export default function BackOverflowSection() {
   return (
     <AccordionSection value="back-overflow" title="Track Overflow">
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
         <SettingSelect
           settingKey="backOverflowMode"
           label="Overflow Mode"

@@ -33,7 +33,7 @@ export default function App() {
     <BrowserRouter>
       <SettingsProvider>
         <AlbumProvider>
-          <div className="min-h-screen bg-bg">
+          <div className="min-h-screen bg-bg overflow-x-hidden">
             <TopBar />
             <AnimatedRoutes />
             <Toaster

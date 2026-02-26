@@ -12,7 +12,7 @@ const fillModeOptions = [
 export default function FrontBackgroundSection() {
   return (
     <AccordionSection value="front-bg" title="Front Background">
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
         <SettingSelect
           settingKey="frontFillMode"
           label="Fill Mode"

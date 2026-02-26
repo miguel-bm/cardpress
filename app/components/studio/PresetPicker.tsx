@@ -10,7 +10,7 @@ export default function PresetPicker() {
   return (
     <div>
       <h3 className="mb-2 text-sm font-medium text-text">Presets</h3>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {presetEntries.map(([name, preset]) => (
           <motion.button
             key={name}

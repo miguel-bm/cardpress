@@ -34,7 +34,7 @@ const alignOptions = [
 export default function TypographySection() {
   return (
     <AccordionSection value="typography" title="Typography">
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
         <SettingSelect
           settingKey="fontFamily"
           label="Font Family"

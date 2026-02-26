@@ -248,7 +248,7 @@ export default function SearchBar() {
   const listboxId = "search-listbox";
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-md">
+    <div ref={containerRef} className="relative w-full md:max-w-md">
       {/* Search input container */}
       <div
         className={[

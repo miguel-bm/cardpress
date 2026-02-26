@@ -11,7 +11,7 @@ const pageSizeOptions = [
 export default function PrintSection() {
   return (
     <AccordionSection value="print" title="Print Production">
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
         <SettingSelect
           settingKey="printPageSize"
           label="Page Size"

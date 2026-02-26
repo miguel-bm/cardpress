@@ -5,6 +5,7 @@ import {
   useCallback,
   type KeyboardEvent,
 } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useAlbum } from "../context/AlbumContext";
 import { searchAlbums, fetchAlbum, proxyImageUrl } from "../lib/api";
 import type { AlbumSearchItem, ProviderMode } from "../lib/types";
@@ -298,84 +299,93 @@ export default function SearchBar() {
       </div>
 
       {/* Dropdown results */}
-      {isOpen && results.length > 0 && (
-        <ul
-          id={listboxId}
-          ref={listRef}
-          role="listbox"
-          className={[
-            "absolute top-full left-0 right-0 mt-1.5 z-50",
-            "bg-surface border border-border rounded-xl shadow-lg",
-            "max-h-80 overflow-auto",
-            "py-1",
-          ].join(" ")}
-        >
-          {results.map((item, index) => (
-            <li
-              key={`${item.source}-${item.id}`}
-              id={`search-option-${index}`}
-              role="option"
-              aria-selected={index === activeIndex}
-              className={[
-                "flex items-center gap-3 px-3 py-2 cursor-pointer",
-                "transition-colors duration-150",
-                index === activeIndex
-                  ? "bg-surface-alt"
-                  : "hover:bg-surface-alt",
-              ].join(" ")}
-              onMouseEnter={() => setActiveIndex(index)}
-              onMouseDown={(e) => {
-                // Prevent input blur before selection fires
-                e.preventDefault();
-              }}
-              onClick={() => handleSelect(item)}
-            >
-              {/* Cover art thumbnail */}
-              {item.coverUrl ? (
-                <img
-                  src={proxyImageUrl(item.coverUrl) ?? ""}
-                  alt=""
-                  className="w-10 h-10 rounded object-cover flex-shrink-0 bg-surface-alt"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded bg-surface-alt flex-shrink-0 flex items-center justify-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    className="text-text-faint"
-                    aria-hidden="true"
-                  >
-                    <rect x="2" y="2" width="20" height="20" rx="2" />
-                    <circle cx="12" cy="12" r="4" />
-                    <circle cx="12" cy="12" r="1" />
-                  </svg>
-                </div>
-              )}
+      <AnimatePresence>
+        {isOpen && results.length > 0 && (
+          <motion.ul
+            id={listboxId}
+            ref={listRef}
+            role="listbox"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+            className={[
+              "absolute top-full left-0 right-0 mt-1.5 z-50",
+              "bg-surface border border-border rounded-xl shadow-lg",
+              "max-h-80 overflow-auto",
+              "py-1",
+            ].join(" ")}
+          >
+            {results.map((item, index) => (
+              <motion.li
+                key={`${item.source}-${item.id}`}
+                id={`search-option-${index}`}
+                role="option"
+                aria-selected={index === activeIndex}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: Math.min(index, 10) * 0.03 }}
+                className={[
+                  "flex items-center gap-3 px-3 py-2 cursor-pointer",
+                  "transition-colors duration-150",
+                  index === activeIndex
+                    ? "bg-surface-alt"
+                    : "hover:bg-surface-alt",
+                ].join(" ")}
+                onMouseEnter={() => setActiveIndex(index)}
+                onMouseDown={(e) => {
+                  // Prevent input blur before selection fires
+                  e.preventDefault();
+                }}
+                onClick={() => handleSelect(item)}
+              >
+                {/* Cover art thumbnail */}
+                {item.coverUrl ? (
+                  <img
+                    src={proxyImageUrl(item.coverUrl) ?? ""}
+                    alt=""
+                    className="w-10 h-10 rounded object-cover flex-shrink-0 bg-surface-alt"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded bg-surface-alt flex-shrink-0 flex items-center justify-center">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      className="text-text-faint"
+                      aria-hidden="true"
+                    >
+                      <rect x="2" y="2" width="20" height="20" rx="2" />
+                      <circle cx="12" cy="12" r="4" />
+                      <circle cx="12" cy="12" r="1" />
+                    </svg>
+                  </div>
+                )}
 
-              {/* Text */}
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium text-text truncate">
-                  {item.title}
+                {/* Text */}
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium text-text truncate">
+                    {item.title}
+                  </div>
+                  <div className="text-xs text-text-muted truncate">
+                    {item.artist}
+                  </div>
                 </div>
-                <div className="text-xs text-text-muted truncate">
-                  {item.artist}
-                </div>
-              </div>
 
-              {/* Source badge */}
-              <span className="flex-shrink-0 text-[10px] text-text-faint uppercase tracking-wider">
-                {item.source === "itunes" ? "IT" : "MB"}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
+                {/* Source badge */}
+                <span className="flex-shrink-0 text-[10px] text-text-faint uppercase tracking-wider">
+                  {item.source === "itunes" ? "IT" : "MB"}
+                </span>
+              </motion.li>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { motion } from "framer-motion";
 import { useSettings } from "../context/SettingsContext";
 import { useAlbum } from "../context/AlbumContext";
 import { loadImage, proxyImageUrl, getQrImage } from "../lib/api";
@@ -106,35 +107,41 @@ export default function ExportActions() {
 
   return (
     <div className="grid grid-cols-3 gap-2">
-      <button
+      <motion.button
         type="button"
         className={BTN_CLASS}
         disabled={disabled}
         onClick={handleFrontPng}
+        whileTap={{ scale: 0.97 }}
+        transition={{ duration: 0.1 }}
       >
         {loadingKey === "front" ? <ButtonSpinner /> : null}
         {loadingKey === "front" ? "Exporting..." : "Front PNG"}
-      </button>
+      </motion.button>
 
-      <button
+      <motion.button
         type="button"
         className={BTN_CLASS}
         disabled={disabled}
         onClick={handleBackPng}
+        whileTap={{ scale: 0.97 }}
+        transition={{ duration: 0.1 }}
       >
         {loadingKey === "back" ? <ButtonSpinner /> : null}
         {loadingKey === "back" ? "Exporting..." : "Back PNG"}
-      </button>
+      </motion.button>
 
-      <button
+      <motion.button
         type="button"
         className={BTN_CLASS}
         disabled={disabled}
         onClick={handlePdf}
+        whileTap={{ scale: 0.97 }}
+        transition={{ duration: 0.1 }}
       >
         {loadingKey === "pdf" ? <ButtonSpinner /> : null}
         {loadingKey === "pdf" ? "Exporting..." : "Card PDF"}
-      </button>
+      </motion.button>
     </div>
   );
 }

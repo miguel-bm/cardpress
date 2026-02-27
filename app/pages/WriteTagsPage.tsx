@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import QRCode from "qrcode";
 import type { AlbumDetail } from "../lib/types";
+import HaSetupSection from "../components/HaSetupSection";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -490,6 +491,9 @@ export default function WriteTagsPage() {
           </div>
         </div>
       )}
+
+      {/* Home Assistant automation template */}
+      <HaSetupSection />
     </div>
   );
 }

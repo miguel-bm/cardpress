@@ -114,11 +114,13 @@ export async function mapWithConcurrency<T, R>(
 //
 // CSV columns (case-insensitive, column order doesn't matter):
 //
-//   title     (required) — Album title
-//   artist    (optional) — Artist or band name
-//   cover_url (optional) — URL to cover artwork image
-//   tracks    (optional) — Semicolon-separated track titles,
-//                          e.g. "Intro;Main Theme;Credits"
+//   title              (required) — Album title
+//   artist             (optional) — Artist or band name
+//   cover_url          (optional) — URL to cover artwork image
+//   tracks             (optional) — Semicolon-separated track titles
+//   spotify album id   (optional) — Spotify album ID (for QR/NFC)
+//   spotify album url  (optional) — Spotify album URL
+//   discogs url        (optional) — Discogs master/release URL
 //
 // Values containing commas must be quoted per standard CSV rules
 // (PapaParse handles this automatically).
@@ -163,6 +165,10 @@ export async function buildAlbumFromCsvRow(
   let coverUrl = getColumn(row, "cover_url");
   let tracks = parseTracks(getColumn(row, "tracks"));
 
+  const spotifyId = getColumn(row, "spotify album id") || getColumn(row, "spotify_album_id") || getColumn(row, "spotifyid");
+  const spotifyUrlRaw = getColumn(row, "spotify album url") || getColumn(row, "spotify_album_url") || getColumn(row, "spotifyurl");
+  const discogsUrl = getColumn(row, "discogs url") || getColumn(row, "discogs_url") || getColumn(row, "discogsurl");
+
   if (enrichTracks) {
     try {
       const params = new URLSearchParams({ title });
@@ -189,6 +195,9 @@ export async function buildAlbumFromCsvRow(
     releaseDate: null,
     tracks,
     source: provider === "musicbrainz" ? "musicbrainz" : "itunes",
+    spotifyId: spotifyId || undefined,
+    spotifyUrl: spotifyUrlRaw || (spotifyId ? `https://open.spotify.com/album/${spotifyId}` : undefined),
+    discogsUrl: discogsUrl || undefined,
   };
 }
 

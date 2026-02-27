@@ -39,27 +39,27 @@ export function checkPrintFit(settings: CardSettings): { fits: boolean; message:
 }
 
 // ---------------------------------------------------------------------------
-// CSV row helpers (app.js lines 1068-1079)
+// CSV row helpers
 // ---------------------------------------------------------------------------
 
 export type CsvRow = Record<string, string>;
 
-/** Strip BOM and normalize a header key for comparison. */
+/** Strip BOM, trim whitespace, and lowercase a header key for comparison. */
 export function normalizeKey(key: string): string {
   return key.replace(/^\uFEFF/, "").trim().toLowerCase();
 }
 
-/** Return the value for the first matching column name, or "". */
-export function rowValue(row: CsvRow, candidates: string[]): string {
-  const wanted = new Set(candidates.map((item) => item.toLowerCase()));
+/** Get a column value by exact name (case-insensitive). */
+export function getColumn(row: CsvRow, name: string): string {
+  const target = name.toLowerCase();
   for (const [key, value] of Object.entries(row)) {
-    if (wanted.has(normalizeKey(key))) return String(value ?? "").trim();
+    if (normalizeKey(key) === target) return String(value ?? "").trim();
   }
   return "";
 }
 
 // ---------------------------------------------------------------------------
-// CSV file parsing (app.js lines 1080-1090)
+// CSV file parsing
 // ---------------------------------------------------------------------------
 
 /** Parse a CSV File using PapaParse. Resolves with an array of row objects. */
@@ -75,7 +75,7 @@ export function parseCsvFile(file: File): Promise<CsvRow[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Concurrency helper (app.js lines 1091-1111)
+// Concurrency helper
 // ---------------------------------------------------------------------------
 
 /** Map items with bounded concurrency, calling onProgress after each. */
@@ -109,7 +109,19 @@ export async function mapWithConcurrency<T, R>(
 }
 
 // ---------------------------------------------------------------------------
-// Album-from-CSV-row builder (app.js lines 1112-1144)
+// Album-from-CSV-row builder
+// ---------------------------------------------------------------------------
+//
+// CSV columns (case-insensitive, column order doesn't matter):
+//
+//   title     (required) — Album title
+//   artist    (optional) — Artist or band name
+//   cover_url (optional) — URL to cover artwork image
+//   tracks    (optional) — Semicolon-separated track titles,
+//                          e.g. "Intro;Main Theme;Credits"
+//
+// Values containing commas must be quoted per standard CSV rules
+// (PapaParse handles this automatically).
 // ---------------------------------------------------------------------------
 
 interface AlbumByTextResponse {
@@ -120,32 +132,36 @@ interface AlbumByTextResponse {
   };
 }
 
+/** Parse a semicolon-separated tracks string into TrackItem[]. */
+function parseTracks(raw: string): TrackItem[] {
+  if (!raw) return [];
+  return raw
+    .split(";")
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .map((title, i) => ({
+      trackNumber: i + 1,
+      title,
+      durationMs: null,
+      duration: "",
+    }));
+}
+
 /**
- * Build an AlbumDetail-like object from a CSV row. If `enrichTracks` is true,
- * we call `/api/album-by-text` to fill in track data, cover, and artist.
+ * Build an AlbumDetail from a CSV row. If `enrichTracks` is true,
+ * calls `/api/album-by-text` to fill in tracks, cover, and artist.
  */
 export async function buildAlbumFromCsvRow(
   row: CsvRow,
   provider: ProviderMode,
   enrichTracks: boolean,
 ): Promise<AlbumDetail | null> {
-  const title = rowValue(row, ["title", "album", "album title"]);
+  const title = getColumn(row, "title");
   if (!title) return null;
 
-  let artist = rowValue(row, [
-    "artist",
-    "album artist",
-    "band",
-    "performer",
-  ]);
-  let coverUrl = rowValue(row, [
-    "cover image url",
-    "cover url",
-    "cover",
-    "image url",
-    "artwork url",
-  ]);
-  let tracks: TrackItem[] = [];
+  let artist = getColumn(row, "artist");
+  let coverUrl = getColumn(row, "cover_url");
+  let tracks = parseTracks(getColumn(row, "tracks"));
 
   if (enrichTracks) {
     try {
@@ -156,7 +172,7 @@ export async function buildAlbumFromCsvRow(
         `/api/album-by-text?${params.toString()}`,
       );
       if (payload.album) {
-        tracks = payload.album.tracks || [];
+        if (!tracks.length) tracks = payload.album.tracks || [];
         if (!artist) artist = payload.album.artist || artist;
         if (!coverUrl) coverUrl = payload.album.coverUrl || coverUrl;
       }
@@ -172,10 +188,7 @@ export async function buildAlbumFromCsvRow(
     coverUrl: coverUrl || null,
     releaseDate: null,
     tracks,
-    source: "itunes" as const,
+    source: provider === "musicbrainz" ? "musicbrainz" : "itunes",
   };
 }
-
-// generateBatchPdf was removed — batch CSV import now adds albums to the
-// print queue, which uses generateQueuePdf from print-queue.ts.
 

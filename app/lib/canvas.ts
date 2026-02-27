@@ -763,6 +763,7 @@ export function drawPlaceholder(canvas: HTMLCanvasElement, label: string): void 
 export function extendCanvasWithBleed(
   cardCanvas: HTMLCanvasElement,
   bleedPx: number,
+  cornerRadiusPx: number = 0,
 ): HTMLCanvasElement {
   if (bleedPx <= 0) return cardCanvas;
 
@@ -775,19 +776,31 @@ export function extendCanvasWithBleed(
   const w = cardCanvas.width;
   const h = cardCanvas.height;
   const b = bleedPx;
+  const r = Math.max(0, Math.min(cornerRadiusPx, Math.min(w, h) / 2));
+
+  // When rounded corners clip the card, pixels outside the arc are transparent
+  // and would render as black in JPEG. Compute safe insets to sample from
+  // inside the clipped region instead.
+  //
+  // Corner inset: on the 45° diagonal a circular arc of radius r passes at
+  // r·(1 − 1/√2) ≈ 0.293r from each axis. +1px safety margin.
+  const ci = r > 0 ? Math.ceil(r * (1 - Math.SQRT1_2)) + 1 : 0;
+  // Edge inset: at y = r (or x = r) the full card width (or height) is inside
+  // the clip, so the sampled strip contains no transparent pixels.
+  const ei = r > 0 ? Math.min(Math.ceil(r), Math.floor(Math.min(w, h) / 2) - 1) : 0;
 
   // Center
   ctx.drawImage(cardCanvas, b, b);
   // Edges: top, bottom, left, right
-  ctx.drawImage(cardCanvas, 0, 0, w, 1, b, 0, w, b);
-  ctx.drawImage(cardCanvas, 0, h - 1, w, 1, b, b + h, w, b);
-  ctx.drawImage(cardCanvas, 0, 0, 1, h, 0, b, b, h);
-  ctx.drawImage(cardCanvas, w - 1, 0, 1, h, b + w, b, b, h);
+  ctx.drawImage(cardCanvas, 0, ei, w, 1, b, 0, w, b);
+  ctx.drawImage(cardCanvas, 0, h - 1 - ei, w, 1, b, b + h, w, b);
+  ctx.drawImage(cardCanvas, ei, 0, 1, h, 0, b, b, h);
+  ctx.drawImage(cardCanvas, w - 1 - ei, 0, 1, h, b + w, b, b, h);
   // Corners: top-left, top-right, bottom-left, bottom-right
-  ctx.drawImage(cardCanvas, 0, 0, 1, 1, 0, 0, b, b);
-  ctx.drawImage(cardCanvas, w - 1, 0, 1, 1, b + w, 0, b, b);
-  ctx.drawImage(cardCanvas, 0, h - 1, 1, 1, 0, b + h, b, b);
-  ctx.drawImage(cardCanvas, w - 1, h - 1, 1, 1, b + w, b + h, b, b);
+  ctx.drawImage(cardCanvas, ci, ci, 1, 1, 0, 0, b, b);
+  ctx.drawImage(cardCanvas, w - 1 - ci, ci, 1, 1, b + w, 0, b, b);
+  ctx.drawImage(cardCanvas, ci, h - 1 - ci, 1, 1, 0, b + h, b, b);
+  ctx.drawImage(cardCanvas, w - 1 - ci, h - 1 - ci, 1, 1, b + w, b + h, b, b);
 
   return out;
 }
@@ -804,7 +817,8 @@ export function renderExportCanvas(
   const canvas = document.createElement("canvas");
   drawCardToCanvas(canvas, side, settings, album, coverImage, qrImage, dpi);
   const bleedPx = Math.max(0, Math.round(mmToPx(bleedMm, dpi)));
-  return extendCanvasWithBleed(canvas, bleedPx);
+  const cornerRadiusPx = Math.round(mmToPx(settings.cornerRadiusMm, dpi));
+  return extendCanvasWithBleed(canvas, bleedPx, cornerRadiusPx);
 }
 
 // ---------------------------------------------------------------------------

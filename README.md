@@ -24,7 +24,7 @@ Cardpress generates **63x88 mm** double-sided music album cards — front with c
   - Built-in presets: Paper, Slate, Midnight, Rosé, Brutalist, Forest
   - Save/load custom style profiles
 - **Export** single cards as front PNG, back PNG, or 2-page PDF
-- **Batch** generate duplex print PDFs from CSV (3x3 per page)
+- **Print** queue with duplex PDF generation (3x3 per page), CSV bulk import
 - **Print production** controls: A4/Letter, bleed, margins, crop marks
 - **Tracklist overflow** handling: auto-downscale, multi-column, wrapping
 
@@ -35,15 +35,20 @@ Cardpress generates **63x88 mm** double-sided music album cards — front with c
 | **Design** | Search, preview, style, and export a single card |
 | **Print** | Queue multiple cards and generate duplex print sheets |
 
-## CSV batch
+## CSV import
 
-Upload a CSV with these columns (case-insensitive aliases supported):
+From the Print page, click **Import CSV** to bulk-add albums to your print queue. The CSV uses these columns (case-insensitive, order doesn't matter):
 
-- **Title**: `Title`, `Album`, `Album Title`
-- **Artist**: `Artist`, `Album Artist`, `Band`, `Performer`
-- **Cover URL**: `Cover Image URL`, `Cover URL`, `Cover`, `Image URL`, `Artwork URL`
+| Column | Required | Description |
+|--------|----------|-------------|
+| `title` | Yes | Album title |
+| `artist` | No | Artist or band name |
+| `cover_url` | No | URL to cover artwork image |
+| `tracks` | No | Semicolon-separated track titles, e.g. `Intro;Main Theme;Credits` |
 
-Extra columns are ignored. A template CSV can be downloaded from the UI.
+Extra columns are ignored. Values containing commas must be quoted (standard CSV rules).
+
+When **Fetch track list** is enabled during import, missing artist, cover art, and tracks are filled in automatically via API lookup.
 
 ## Local development
 

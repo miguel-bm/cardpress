@@ -174,7 +174,7 @@ export default function CsvDropZone({ onParsed }: CsvDropZoneProps) {
             Drag &amp; drop a CSV file or click to browse
           </p>
           <p className="text-xs text-text-muted mt-1">
-            CSV should have at least a Title column
+            Columns: <span className="font-medium">title</span> (required), <span className="font-medium">artist</span>, <span className="font-medium">cover_url</span>, <span className="font-medium">tracks</span>
           </p>
         </div>
       </div>

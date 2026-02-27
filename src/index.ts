@@ -477,8 +477,12 @@ async function proxyImage(target: URL): Promise<Response> {
   });
 }
 
+interface Env {
+  ASSETS: { fetch: (request: Request) => Promise<Response> };
+}
+
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
     if (request.method !== "GET") {
@@ -564,6 +568,7 @@ export default {
       return proxyImage(target);
     }
 
-    return new Response("Not Found", { status: 404 });
+    // SPA fallback — serve index.html for non-API routes
+    return env.ASSETS.fetch(request);
   }
-} satisfies ExportedHandler;
+} satisfies ExportedHandler<Env>;

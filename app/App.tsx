@@ -6,6 +6,7 @@ import { AlbumProvider } from "./context/AlbumContext";
 import TopBar from "./components/TopBar";
 import DesignPage from "./pages/DesignPage";
 import PrintPage from "./pages/PrintPage";
+import AboutPage from "./pages/AboutPage";
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -22,6 +23,7 @@ function AnimatedRoutes() {
         <Routes location={location}>
           <Route path="/" element={<DesignPage />} />
           <Route path="/print" element={<PrintPage />} />
+          <Route path="/about" element={<AboutPage />} />
         </Routes>
       </motion.div>
     </AnimatePresence>

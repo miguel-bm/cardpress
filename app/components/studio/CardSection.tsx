@@ -13,6 +13,13 @@ const collapse = {
   transition: { duration: 0.2 },
 };
 
+const CARD_SIZE_PRESETS = [
+  { label: "Poker", w: 63, h: 88 },
+  { label: "Tarot", w: 70, h: 120 },
+  { label: "Mini", w: 44, h: 63 },
+  { label: "Square", w: 63, h: 63 },
+] as const;
+
 const qrContentOptions = [
   { value: "title", label: "Title" },
   { value: "spotify", label: "Spotify" },
@@ -33,6 +40,33 @@ export default function CardSection() {
           <p className="text-[11px] font-medium text-text-muted uppercase tracking-wide mb-2">
             Dimensions
           </p>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {CARD_SIZE_PRESETS.map((p) => {
+              const active =
+                settings.cardWidthMm === p.w && settings.cardHeightMm === p.h;
+              return (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => {
+                    updateSetting("cardWidthMm", p.w);
+                    updateSetting("cardHeightMm", p.h);
+                  }}
+                  className={[
+                    "px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
+                    active
+                      ? "bg-accent text-white"
+                      : "bg-surface-alt text-text-muted hover:text-text hover:bg-surface-alt/80",
+                  ].join(" ")}
+                >
+                  {p.label}
+                  <span className="ml-1 opacity-60">
+                    {p.w}×{p.h}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
             <SettingSlider
               settingKey="cardWidthMm"

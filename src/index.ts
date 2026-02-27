@@ -104,6 +104,45 @@ interface CoverArtArchivePayload {
   images?: CoverArtImage[];
 }
 
+interface SpotifyImage {
+  url?: string;
+  height?: number;
+  width?: number;
+}
+
+interface SpotifyArtist {
+  name?: string;
+}
+
+interface SpotifyAlbumSimplified {
+  id?: string;
+  name?: string;
+  artists?: SpotifyArtist[];
+  images?: SpotifyImage[];
+  release_date?: string;
+  total_tracks?: number;
+  external_urls?: { spotify?: string };
+}
+
+interface SpotifySearchPayload {
+  albums?: {
+    items?: SpotifyAlbumSimplified[];
+  };
+}
+
+interface SpotifyTrack {
+  name?: string;
+  track_number?: number;
+  disc_number?: number;
+  duration_ms?: number;
+}
+
+interface SpotifyAlbumFull extends SpotifyAlbumSimplified {
+  tracks?: {
+    items?: SpotifyTrack[];
+  };
+}
+
 const JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "cache-control": "no-store"
@@ -154,6 +193,7 @@ function upscaleArtwork(url?: string): string | null {
 function parseProvider(raw: string | null): ProviderMode {
   const value = (raw || "itunes").trim().toLowerCase();
   if (value === "musicbrainz") return "musicbrainz";
+  if (value === "spotify") return "spotify";
   if (value === "auto") return "auto";
   return "itunes";
 }
@@ -416,18 +456,142 @@ async function fetchMusicBrainzAlbumByTitleArtist(title: string, artist?: string
   return fetchMusicBrainzAlbumById(best.id);
 }
 
-async function searchAlbums(query: string, provider: ProviderMode): Promise<AlbumSearchItem[]> {
+// ---------------------------------------------------------------------------
+// Spotify provider
+// ---------------------------------------------------------------------------
+
+let spotifyToken: string | null = null;
+let spotifyTokenExpiry = 0;
+
+async function getSpotifyToken(env: Env): Promise<string | null> {
+  if (!env.SPOTIFY_CLIENT_ID || !env.SPOTIFY_CLIENT_SECRET) return null;
+  if (spotifyToken && Date.now() < spotifyTokenExpiry) return spotifyToken;
+
+  const resp = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: `Basic ${btoa(`${env.SPOTIFY_CLIENT_ID}:${env.SPOTIFY_CLIENT_SECRET}`)}`,
+    },
+    body: "grant_type=client_credentials",
+  });
+  if (!resp.ok) return null;
+
+  const data = (await resp.json()) as { access_token: string; expires_in: number };
+  spotifyToken = data.access_token;
+  spotifyTokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
+  return spotifyToken;
+}
+
+function formatSpotifyArtists(artists?: SpotifyArtist[]): string {
+  if (!Array.isArray(artists) || !artists.length) return "Unknown Artist";
+  return artists.map((a) => a.name || "").filter(Boolean).join(", ") || "Unknown Artist";
+}
+
+function bestSpotifyImage(images?: SpotifyImage[]): string | null {
+  if (!Array.isArray(images) || !images.length) return null;
+  const sorted = [...images].sort((a, b) => (b.width ?? 0) - (a.width ?? 0));
+  return sorted[0]?.url || null;
+}
+
+async function searchSpotifyAlbums(query: string, limit: number, env: Env): Promise<AlbumSearchItem[]> {
+  const token = await getSpotifyToken(env);
+  if (!token) return [];
+
+  const url = new URL("https://api.spotify.com/v1/search");
+  url.searchParams.set("q", query);
+  url.searchParams.set("type", "album");
+  url.searchParams.set("limit", String(Math.min(Math.max(limit, 1), 50)));
+
+  const resp = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!resp.ok) return [];
+
+  const payload = (await resp.json()) as SpotifySearchPayload;
+  return (payload.albums?.items ?? [])
+    .filter((item) => item.id)
+    .map((item) => ({
+      id: item.id as string,
+      title: safeText(item.name, "Untitled Album"),
+      artist: formatSpotifyArtists(item.artists),
+      coverUrl: bestSpotifyImage(item.images),
+      releaseDate: safeText(item.release_date) || null,
+      trackCount: item.total_tracks ?? 0,
+      source: "spotify" as const,
+    }));
+}
+
+function toSpotifyAlbumDetail(album: SpotifyAlbumFull): AlbumDetail | null {
+  if (!album.id) return null;
+
+  const tracks: TrackItem[] = (album.tracks?.items ?? [])
+    .slice()
+    .sort((a, b) => {
+      const keyA = (a.disc_number ?? 1) * 1000 + (a.track_number ?? 999);
+      const keyB = (b.disc_number ?? 1) * 1000 + (b.track_number ?? 999);
+      return keyA - keyB;
+    })
+    .map((track, index) => ({
+      trackNumber: track.track_number ?? index + 1,
+      title: safeText(track.name, `Track ${index + 1}`),
+      durationMs: Number.isFinite(track.duration_ms) ? (track.duration_ms as number) : null,
+      duration: formatDuration(track.duration_ms),
+    }));
+
+  return {
+    id: album.id,
+    title: safeText(album.name, "Untitled Album"),
+    artist: formatSpotifyArtists(album.artists),
+    coverUrl: bestSpotifyImage(album.images),
+    releaseDate: safeText(album.release_date) || null,
+    tracks,
+    source: "spotify",
+    spotifyId: album.id,
+    spotifyUrl: album.external_urls?.spotify || `https://open.spotify.com/album/${album.id}`,
+  };
+}
+
+async function fetchSpotifyAlbumById(id: string, env: Env): Promise<AlbumDetail | null> {
+  const token = await getSpotifyToken(env);
+  if (!token) return null;
+
+  const resp = await fetch(`https://api.spotify.com/v1/albums/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!resp.ok) return null;
+
+  const album = (await resp.json()) as SpotifyAlbumFull;
+  return toSpotifyAlbumDetail(album);
+}
+
+async function fetchSpotifyAlbumByTitleArtist(title: string, artist: string | undefined, env: Env): Promise<AlbumDetail | null> {
+  const query = artist ? `${title} ${artist}` : title;
+  const candidates = await searchSpotifyAlbums(query, 20, env);
+  if (!candidates.length) return null;
+
+  const best = candidates
+    .map((candidate) => ({ candidate, score: scoreCandidate(candidate, title, artist) }))
+    .sort((a, b) => b.score - a.score)[0]?.candidate;
+
+  if (!best) return null;
+  return fetchSpotifyAlbumById(best.id, env);
+}
+
+async function searchAlbums(query: string, provider: ProviderMode, env: Env): Promise<AlbumSearchItem[]> {
   if (provider === "itunes") return searchItunesAlbums(query, 25);
   if (provider === "musicbrainz") return searchMusicBrainzAlbums(query, 25);
+  if (provider === "spotify") return searchSpotifyAlbums(query, 25, env);
 
   const itunes = await searchItunesAlbums(query, 25);
   if (itunes.length) return itunes;
   return searchMusicBrainzAlbums(query, 25);
 }
 
-async function fetchAlbumById(id: string, provider: ProviderMode): Promise<AlbumDetail | null> {
+async function fetchAlbumById(id: string, provider: ProviderMode, env: Env): Promise<AlbumDetail | null> {
   if (provider === "itunes") return fetchItunesAlbumById(id);
   if (provider === "musicbrainz") return fetchMusicBrainzAlbumById(id);
+  if (provider === "spotify") return fetchSpotifyAlbumById(id, env);
 
   if (isUuidLike(id)) {
     const musicBrainzAlbum = await fetchMusicBrainzAlbumById(id);
@@ -439,9 +603,10 @@ async function fetchAlbumById(id: string, provider: ProviderMode): Promise<Album
   return fetchMusicBrainzAlbumById(id);
 }
 
-async function fetchAlbumByTitleArtist(title: string, artist: string | undefined, provider: ProviderMode): Promise<AlbumDetail | null> {
+async function fetchAlbumByTitleArtist(title: string, artist: string | undefined, provider: ProviderMode, env: Env): Promise<AlbumDetail | null> {
   if (provider === "itunes") return fetchItunesAlbumByTitleArtist(title, artist);
   if (provider === "musicbrainz") return fetchMusicBrainzAlbumByTitleArtist(title, artist);
+  if (provider === "spotify") return fetchSpotifyAlbumByTitleArtist(title, artist, env);
 
   const itunesAlbum = await fetchItunesAlbumByTitleArtist(title, artist);
   if (itunesAlbum) return itunesAlbum;
@@ -482,6 +647,8 @@ async function proxyImage(target: URL): Promise<Response> {
 
 interface Env {
   ASSETS: { fetch: (request: Request) => Promise<Response> };
+  SPOTIFY_CLIENT_ID?: string;
+  SPOTIFY_CLIENT_SECRET?: string;
 }
 
 export default {
@@ -493,7 +660,9 @@ export default {
     }
 
     if (url.pathname === "/api/health") {
-      return json({ ok: true, providers: ["itunes", "musicbrainz"], defaultProvider: "itunes" });
+      const providers: string[] = ["itunes", "musicbrainz"];
+      if (env.SPOTIFY_CLIENT_ID) providers.push("spotify");
+      return json({ ok: true, providers, defaultProvider: "itunes" });
     }
 
     if (url.pathname === "/api/search") {
@@ -505,7 +674,7 @@ export default {
       const provider = parseProvider(url.searchParams.get("provider"));
 
       try {
-        const items = await searchAlbums(query, provider);
+        const items = await searchAlbums(query, provider, env);
         return json({ provider, results: items });
       } catch (error) {
         return json({ error: (error as Error).message }, 502);
@@ -521,7 +690,7 @@ export default {
       const provider = parseProvider(url.searchParams.get("provider"));
 
       try {
-        const album = await fetchAlbumById(id, provider);
+        const album = await fetchAlbumById(id, provider, env);
         if (!album) {
           return json({ error: "Album not found." }, 404);
         }
@@ -541,7 +710,7 @@ export default {
       const provider = parseProvider(url.searchParams.get("provider"));
 
       try {
-        const album = await fetchAlbumByTitleArtist(title, artist || undefined, provider);
+        const album = await fetchAlbumByTitleArtist(title, artist || undefined, provider, env);
         if (!album) {
           return json({ error: "Album not found." }, 404);
         }

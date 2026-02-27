@@ -194,7 +194,7 @@ export async function buildAlbumFromCsvRow(
     coverUrl: coverUrl || null,
     releaseDate: null,
     tracks,
-    source: provider === "musicbrainz" ? "musicbrainz" : "itunes",
+    source: provider === "musicbrainz" ? "musicbrainz" : provider === "spotify" ? "spotify" : "itunes",
     spotifyId: spotifyId || undefined,
     spotifyUrl: spotifyUrlRaw || (spotifyId ? `https://open.spotify.com/album/${spotifyId}` : undefined),
     discogsUrl: discogsUrl || undefined,

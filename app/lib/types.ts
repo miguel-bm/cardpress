@@ -5,8 +5,8 @@
 /** Provider identifier returned by the Worker API */
 export type ProviderName = "itunes" | "musicbrainz" | "spotify";
 
-/** Provider selection mode (includes "auto" which tries both) */
-export type ProviderMode = "itunes" | "musicbrainz" | "auto";
+/** Provider selection mode (includes "auto" which tries all) */
+export type ProviderMode = ProviderName | "auto";
 
 /** A single result item from `/api/search` */
 export interface AlbumSearchItem {

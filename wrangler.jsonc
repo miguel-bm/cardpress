@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "album-card-generator",
+  "name": "cardpress",
   "main": "src/index.ts",
   "compatibility_date": "2026-02-26",
   "compatibility_flags": [
@@ -9,5 +9,8 @@
   ],
   "observability": {
     "enabled": true
-  }
+  },
+  "routes": [
+    { "pattern": "cardpress.miscellanics.com", "custom_domain": true }
+  ]
 }

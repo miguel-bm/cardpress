@@ -2,34 +2,34 @@ import * as Accordion from "@radix-ui/react-accordion";
 import PresetPicker from "./studio/PresetPicker";
 import ProfileManager from "./studio/ProfileManager";
 import TypographySection from "./studio/TypographySection";
-import FrontBackgroundSection from "./studio/FrontBackgroundSection";
-import BackBackgroundSection from "./studio/BackBackgroundSection";
-import BackOverflowSection from "./studio/BackOverflowSection";
-import FrameQrSection from "./studio/FrameQrSection";
-import PrintSection from "./studio/PrintSection";
+import FrontSection from "./studio/FrontSection";
+import BackSection from "./studio/BackSection";
+import CardSection from "./studio/CardSection";
 
-export default function StyleStudio() {
+interface Props {
+  className?: string;
+}
+
+export default function StyleStudio({ className = "" }: Props) {
   return (
-    <div className="space-y-5">
+    <div className={`space-y-5 ${className}`}>
       <div>
         <h2 className="text-lg font-semibold text-text">Style Studio</h2>
         <p className="mt-1 text-sm text-text-muted">
-          Design once, reuse in single and batch mode.
+          Customize your card design.
         </p>
       </div>
       <PresetPicker />
       <ProfileManager />
       <Accordion.Root
         type="multiple"
-        defaultValue={["typography"]}
+        defaultValue={["typography", "front"]}
         className="space-y-2"
       >
         <TypographySection />
-        <FrontBackgroundSection />
-        <BackBackgroundSection />
-        <BackOverflowSection />
-        <FrameQrSection />
-        <PrintSection />
+        <FrontSection />
+        <BackSection />
+        <CardSection />
       </Accordion.Root>
     </div>
   );

@@ -5,7 +5,7 @@ import { SettingsProvider } from "./context/SettingsContext";
 import { AlbumProvider } from "./context/AlbumContext";
 import TopBar from "./components/TopBar";
 import DesignPage from "./pages/DesignPage";
-import BatchPage from "./pages/BatchPage";
+import PrintPage from "./pages/PrintPage";
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -21,7 +21,7 @@ function AnimatedRoutes() {
       >
         <Routes location={location}>
           <Route path="/" element={<DesignPage />} />
-          <Route path="/batch" element={<BatchPage />} />
+          <Route path="/print" element={<PrintPage />} />
         </Routes>
       </motion.div>
     </AnimatePresence>
@@ -33,11 +33,13 @@ export default function App() {
     <BrowserRouter>
       <SettingsProvider>
         <AlbumProvider>
-          <div className="min-h-screen bg-bg overflow-x-hidden">
+          <div className="min-h-screen bg-bg">
             <TopBar />
             <AnimatedRoutes />
             <Toaster
-              position="top-right"
+              position="bottom-right"
+              closeButton
+              duration={2000}
               toastOptions={{
                 style: {
                   background: "#FFFFFF",

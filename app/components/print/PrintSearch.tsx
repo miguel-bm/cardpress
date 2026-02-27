@@ -7,15 +7,18 @@ import {
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
-import { useAlbum } from "../context/AlbumContext";
-import { searchAlbums, fetchAlbum, proxyImageUrl } from "../lib/api";
-import type { AlbumSearchItem, ProviderMode } from "../lib/types";
+import { searchAlbums, fetchAlbum, proxyImageUrl } from "../../lib/api";
+import type {
+  AlbumDetail,
+  AlbumSearchItem,
+  ProviderMode,
+} from "../../lib/types";
 
 // ---------------------------------------------------------------------------
-// Search icon SVG
+// Icons
 // ---------------------------------------------------------------------------
 
-function SearchIcon({ className }: { className?: string }) {
+function SearchIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -27,7 +30,6 @@ function SearchIcon({ className }: { className?: string }) {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={className}
       aria-hidden="true"
     >
       <circle cx="11" cy="11" r="8" />
@@ -35,10 +37,6 @@ function SearchIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Spinner icon for loading state
-// ---------------------------------------------------------------------------
 
 function Spinner() {
   return (
@@ -77,12 +75,16 @@ const PROVIDER_OPTIONS: { value: ProviderMode; label: string }[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// SearchBar component
+// PrintSearch — self-contained album search for the print queue
 // ---------------------------------------------------------------------------
 
-export default function SearchBar() {
-  const { provider, setProvider, setAlbum } = useAlbum();
+interface Props {
+  onAdd: (album: AlbumDetail) => void;
+  disabled?: boolean;
+}
 
+export default function PrintSearch({ onAdd, disabled }: Props) {
+  const [provider, setProvider] = useState<ProviderMode>("auto");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AlbumSearchItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -94,17 +96,11 @@ export default function SearchBar() {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Track the latest search request to ignore stale responses
   const searchIdRef = useRef(0);
 
-  // -------------------------------------------------------------------------
   // Debounced search
-  // -------------------------------------------------------------------------
-
   useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
     const trimmed = query.trim();
     if (trimmed.length < 2) {
@@ -120,7 +116,6 @@ export default function SearchBar() {
       const id = ++searchIdRef.current;
       try {
         const items = await searchAlbums(trimmed, provider);
-        // Only update if this is still the latest search
         if (id === searchIdRef.current) {
           setResults(items);
           setIsOpen(items.length > 0);
@@ -136,38 +131,16 @@ export default function SearchBar() {
           );
         }
       } finally {
-        if (id === searchIdRef.current) {
-          setIsLoading(false);
-        }
+        if (id === searchIdRef.current) setIsLoading(false);
       }
     }, 300);
 
     return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [query, provider]);
 
-  // -------------------------------------------------------------------------
-  // Cmd+K / Ctrl+K global shortcut to focus search
-  // -------------------------------------------------------------------------
-
-  useEffect(() => {
-    function handleGlobalKey(e: globalThis.KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-    }
-    document.addEventListener("keydown", handleGlobalKey);
-    return () => document.removeEventListener("keydown", handleGlobalKey);
-  }, []);
-
-  // -------------------------------------------------------------------------
-  // Click-outside handler
-  // -------------------------------------------------------------------------
-
+  // Click-outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (
@@ -181,10 +154,7 @@ export default function SearchBar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // -------------------------------------------------------------------------
-  // Scroll active item into view
-  // -------------------------------------------------------------------------
-
+  // Scroll active into view
   useEffect(() => {
     if (activeIndex >= 0 && listRef.current) {
       const items = listRef.current.querySelectorAll("[role='option']");
@@ -192,22 +162,19 @@ export default function SearchBar() {
     }
   }, [activeIndex]);
 
-  // -------------------------------------------------------------------------
-  // Select an album
-  // -------------------------------------------------------------------------
-
+  // Select album → fetch full detail → add to queue
   const handleSelect = useCallback(
     async (item: AlbumSearchItem) => {
+      if (disabled) return;
       setIsSelecting(true);
       setIsOpen(false);
-      setQuery(item.title);
 
       try {
         const album = await fetchAlbum(item.id, provider);
-        setAlbum(album);
+        onAdd(album);
+        setQuery("");
+        setResults([]);
       } catch (err) {
-        // If fetch fails, at least set basic info from search result
-        // (the user can retry)
         toast.error(
           "Could not load album" +
             (err instanceof Error ? ": " + err.message : ""),
@@ -216,13 +183,10 @@ export default function SearchBar() {
         setIsSelecting(false);
       }
     },
-    [provider, setAlbum],
+    [provider, onAdd, disabled],
   );
 
-  // -------------------------------------------------------------------------
-  // Keyboard navigation
-  // -------------------------------------------------------------------------
-
+  // Keyboard nav
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
       if (!isOpen) return;
@@ -256,29 +220,24 @@ export default function SearchBar() {
     [isOpen, results, activeIndex, handleSelect],
   );
 
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
-
-  const listboxId = "search-listbox";
+  const listboxId = "print-search-listbox";
 
   return (
-    <div ref={containerRef} className="relative w-full md:max-w-md">
-      {/* Search input container */}
+    <div ref={containerRef} className="relative">
+      {/* Input row */}
       <div
         className={[
           "flex items-center gap-2",
           "bg-surface-alt border border-border rounded-xl px-3 h-10",
           "transition-all duration-150",
           "focus-within:border-border-focus focus-within:ring-1 focus-within:ring-border-focus",
+          disabled ? "opacity-50 pointer-events-none" : "",
         ].join(" ")}
       >
-        {/* Search icon or spinner */}
         <div className="flex-shrink-0 text-text-muted">
           {isLoading || isSelecting ? <Spinner /> : <SearchIcon />}
         </div>
 
-        {/* Text input */}
         <input
           ref={inputRef}
           type="text"
@@ -288,35 +247,22 @@ export default function SearchBar() {
           onFocus={() => {
             if (results.length > 0) setIsOpen(true);
           }}
-          placeholder="Search albums..."
-          className={[
-            "flex-1 min-w-0 bg-transparent border-none outline-none",
-            "text-sm text-text placeholder:text-text-faint",
-          ].join(" ")}
+          placeholder="Search albums to add..."
+          className="flex-1 min-w-0 bg-transparent border-none outline-none text-sm text-text placeholder:text-text-faint"
           role="combobox"
           aria-expanded={isOpen}
           aria-controls={listboxId}
           aria-activedescendant={
-            activeIndex >= 0 ? `search-option-${activeIndex}` : undefined
+            activeIndex >= 0 ? `print-search-option-${activeIndex}` : undefined
           }
           aria-autocomplete="list"
-          aria-label="Search albums"
+          aria-label="Search albums to add to print queue"
         />
 
-        {/* Keyboard shortcut hint */}
-        <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-border bg-surface px-1.5 py-0.5 text-[10px] text-text-faint font-mono shrink-0">
-          &#8984;K
-        </kbd>
-
-        {/* Provider select */}
         <select
           value={provider}
           onChange={(e) => setProvider(e.target.value as ProviderMode)}
-          className={[
-            "flex-shrink-0 bg-transparent border-none outline-none cursor-pointer",
-            "text-xs text-text-muted",
-            "hover:text-text transition-colors duration-150",
-          ].join(" ")}
+          className="flex-shrink-0 bg-transparent border-none outline-none cursor-pointer text-xs text-text-muted hover:text-text transition-colors duration-150"
           aria-label="Search provider"
         >
           {PROVIDER_OPTIONS.map((opt) => (
@@ -348,7 +294,7 @@ export default function SearchBar() {
             {results.map((item, index) => (
               <motion.li
                 key={`${item.source}-${item.id}`}
-                id={`search-option-${index}`}
+                id={`print-search-option-${index}`}
                 role="option"
                 aria-selected={index === activeIndex}
                 initial={{ opacity: 0 }}
@@ -362,13 +308,9 @@ export default function SearchBar() {
                     : "hover:bg-surface-alt",
                 ].join(" ")}
                 onMouseEnter={() => setActiveIndex(index)}
-                onMouseDown={(e) => {
-                  // Prevent input blur before selection fires
-                  e.preventDefault();
-                }}
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleSelect(item)}
               >
-                {/* Cover art thumbnail */}
                 {item.coverUrl ? (
                   <img
                     src={proxyImageUrl(item.coverUrl) ?? ""}
@@ -396,7 +338,6 @@ export default function SearchBar() {
                   </div>
                 )}
 
-                {/* Text */}
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium text-text truncate">
                     {item.title}
@@ -406,7 +347,6 @@ export default function SearchBar() {
                   </div>
                 </div>
 
-                {/* Source badge */}
                 <span className="flex-shrink-0 text-[10px] text-text-faint uppercase tracking-wider">
                   {item.source === "itunes" ? "IT" : "MB"}
                 </span>

@@ -106,6 +106,8 @@ export async function downloadCardPdf(
   coverImage: HTMLImageElement | null,
   qrImage: HTMLImageElement | null,
 ): Promise<void> {
+  const cardW = settings.cardWidthMm || CARD_WIDTH_MM;
+  const cardH = settings.cardHeightMm || CARD_HEIGHT_MM;
   const bleedMm = settings.printBleedMm;
   const bleedPt = mmToPt(bleedMm);
   const cropLengthPt = mmToPt(settings.printCropLengthMm);
@@ -114,8 +116,8 @@ export async function downloadCardPdf(
     ? cropLengthPt + cropOffsetPt + mmToPt(1.5)
     : mmToPt(1.5);
 
-  const cellW = mmToPt(CARD_WIDTH_MM) + bleedPt * 2;
-  const cellH = mmToPt(CARD_HEIGHT_MM) + bleedPt * 2;
+  const cellW = mmToPt(cardW) + bleedPt * 2;
+  const cellH = mmToPt(cardH) + bleedPt * 2;
 
   const frontCanvas = renderExportCanvas(
     "front",
@@ -165,8 +167,8 @@ export async function downloadCardPdf(
   if (settings.printCropMarks) {
     const trimX = cropPaddingPt + bleedPt;
     const trimY = cropPaddingPt + bleedPt;
-    const trimW = mmToPt(CARD_WIDTH_MM);
-    const trimH = mmToPt(CARD_HEIGHT_MM);
+    const trimW = mmToPt(cardW);
+    const trimH = mmToPt(cardH);
     const cropOpts = { lengthPt: cropLengthPt, offsetPt: cropOffsetPt };
     drawCropMarksForCard(frontPage, trimX, trimY, trimW, trimH, cropOpts);
     drawCropMarksForCard(backPage, trimX, trimY, trimW, trimH, cropOpts);

@@ -10,6 +10,7 @@ import {
   CARD_HEIGHT_MM,
   PREVIEW_DPI,
 } from "../lib/canvas";
+import { resolveQrText } from "../lib/qr";
 
 // ---------------------------------------------------------------------------
 // CardCanvas — renders one side (front or back) of an album card
@@ -25,29 +26,33 @@ export default function CardCanvas({ side, className }: CardCanvasProps) {
   const { album } = useAlbum();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  const cardW = settings.cardWidthMm || CARD_WIDTH_MM;
+  const cardH = settings.cardHeightMm || CARD_HEIGHT_MM;
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Set canvas resolution to match card dimensions at preview DPI
-    canvas.width = Math.round(mmToPx(CARD_WIDTH_MM, PREVIEW_DPI));
-    canvas.height = Math.round(mmToPx(CARD_HEIGHT_MM, PREVIEW_DPI));
+    canvas.width = Math.round(mmToPx(cardW, PREVIEW_DPI));
+    canvas.height = Math.round(mmToPx(cardH, PREVIEW_DPI));
 
     if (!album) {
       drawPlaceholder(canvas, "Search for an album");
       return;
     }
 
-    // Abort pattern: track whether this effect has been cleaned up
     let cancelled = false;
 
     async function render() {
       if (!album) return;
 
       try {
+        const qrText = resolveQrText(settings, album);
         const [coverImage, qrImage] = await Promise.all([
           loadImage(proxyImageUrl(album.coverUrl)),
-          getQrImage(album.id, settings.qrDark, settings.qrLight),
+          settings.qrEnabled && qrText
+            ? getQrImage(qrText, settings.qrDark, settings.qrLight)
+            : Promise.resolve(null),
         ]);
 
         if (cancelled) return;
@@ -73,13 +78,19 @@ export default function CardCanvas({ side, className }: CardCanvasProps) {
     return () => {
       cancelled = true;
     };
-  }, [album, settings, side]);
+  }, [album, settings, side, cardW, cardH]);
+
+  const radiusPct = ((settings.cornerRadiusMm / cardW) * 100).toFixed(2);
 
   return (
     <canvas
       ref={canvasRef}
+      style={{
+        borderRadius: `${radiusPct}%`,
+        aspectRatio: `${cardW} / ${cardH}`,
+      }}
       className={[
-        "w-full aspect-[63/88] rounded-xl border border-border bg-white shadow-sm",
+        "w-full border border-border bg-white shadow-sm",
         className,
       ]
         .filter(Boolean)

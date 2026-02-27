@@ -1,5 +1,5 @@
 {
-  "name": "album-card-generator",
+  "name": "cardpress",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,8 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "cf-typegen": "wrangler types",
-    "deploy": "wrangler deploy",
-    "deploy:dry-run": "wrangler deploy --dry-run",
+    "deploy": "vite build && wrangler deploy",
+    "deploy:dry-run": "vite build && wrangler deploy --dry-run",
     "ops:check": "pnpm run typecheck && pnpm run deploy:dry-run"
   },
   "devDependencies": {

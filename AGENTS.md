@@ -3,7 +3,7 @@
 Guidance for coding agents and contributors working in this repository.
 
 ## Project Summary
-- App: Album Card Generator
+- App: Cardpress
 - Runtime: Cloudflare Workers + static assets
 - Package manager: `pnpm`
 - UI: React 19 + Tailwind CSS v4 + Radix UI in `app/`

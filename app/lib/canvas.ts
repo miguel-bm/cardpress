@@ -1,11 +1,36 @@
 // ---------------------------------------------------------------------------
-// Pure canvas rendering functions for Album Card Generator
+// Pure canvas rendering functions for Cardpress
 // Ported 1:1 from public/app.js — preserves all rendering math exactly.
 // ---------------------------------------------------------------------------
 
 import { rgb } from "pdf-lib";
 import type { PDFPage } from "pdf-lib";
 import type { AlbumDetail, CardSettings } from "./types";
+
+// ---------------------------------------------------------------------------
+// Content text processing — strip brackets/parens per settings
+// ---------------------------------------------------------------------------
+
+export function processDisplayText(
+  text: string,
+  field: "title" | "artist" | "track",
+  settings: CardSettings,
+): string {
+  let result = text;
+  const stripBrackets =
+    field === "title" ? settings.stripBracketsTitle :
+    field === "artist" ? settings.stripBracketsArtist :
+    settings.stripBracketsTracks;
+  const stripParens =
+    field === "title" ? settings.stripParensTitle :
+    field === "artist" ? settings.stripParensArtist :
+    settings.stripParensTracks;
+
+  if (stripBrackets) result = result.replace(/\s*\[[^\]]*\]/g, "");
+  if (stripParens) result = result.replace(/\s*\([^)]*\)/g, "");
+
+  return result.trim();
+}
 
 // ---------------------------------------------------------------------------
 // Constants (app.js lines 5-18)
@@ -146,14 +171,43 @@ export function drawImageCover(
   settings: CardSettings,
   pxPerMm: number,
 ): void {
+  const radius = settings.coverBorderRadiusMm * pxPerMm;
+
+  // Inset border: shrink the art inward and fill the border area with color
+  let inset = 0;
+  if (settings.coverInsetBorderEnabled && settings.coverInsetBorderWidthMm > 0) {
+    inset = settings.coverInsetBorderWidthMm * pxPerMm;
+    ctx.fillStyle = settings.coverInsetBorderColor;
+    if (radius > 0) {
+      ctx.save();
+      roundedRectPath(ctx, x, y, size, size, radius);
+      ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.fillRect(x, y, size, size);
+    }
+  }
+
+  const artX = x + inset;
+  const artY = y + inset;
+  const artSize = size - inset * 2;
+  const artRadius = Math.max(0, radius - inset);
+
   if (!img) {
     ctx.fillStyle = "#d9d4c7";
-    ctx.fillRect(x, y, size, size);
+    if (artRadius > 0) {
+      ctx.save();
+      roundedRectPath(ctx, artX, artY, artSize, artSize, artRadius);
+      ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.fillRect(artX, artY, artSize, artSize);
+    }
     ctx.fillStyle = "#726a5b";
-    ctx.font = `${Math.round(size * 0.04)}px sans-serif`;
+    ctx.font = `${Math.round(artSize * 0.04)}px sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("No Cover", x + size / 2, y + size / 2);
+    ctx.fillText("No Cover", artX + artSize / 2, artY + artSize / 2);
     return;
   }
 
@@ -162,17 +216,34 @@ export function drawImageCover(
   const srcSize = Math.min(srcW, srcH);
   const srcX = (srcW - srcSize) / 2;
   const srcY = (srcH - srcSize) / 2;
-  ctx.drawImage(img, srcX, srcY, srcSize, srcSize, x, y, size, size);
 
+  if (artRadius > 0) {
+    ctx.save();
+    roundedRectPath(ctx, artX, artY, artSize, artSize, artRadius);
+    ctx.clip();
+    ctx.drawImage(img, srcX, srcY, srcSize, srcSize, artX, artY, artSize, artSize);
+    ctx.restore();
+  } else {
+    ctx.drawImage(img, srcX, srcY, srcSize, srcSize, artX, artY, artSize, artSize);
+  }
+
+  // Overlay border (on top of the art)
   if (settings.coverBorderEnabled && settings.coverBorderWidthMm > 0) {
     ctx.strokeStyle = settings.coverBorderColor;
     ctx.lineWidth = settings.coverBorderWidthMm * pxPerMm;
-    ctx.strokeRect(
-      x + ctx.lineWidth / 2,
-      y + ctx.lineWidth / 2,
-      size - ctx.lineWidth,
-      size - ctx.lineWidth,
-    );
+    if (radius > 0) {
+      ctx.save();
+      roundedRectPath(ctx, x + ctx.lineWidth / 2, y + ctx.lineWidth / 2, size - ctx.lineWidth, size - ctx.lineWidth, radius - ctx.lineWidth / 2);
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      ctx.strokeRect(
+        x + ctx.lineWidth / 2,
+        y + ctx.lineWidth / 2,
+        size - ctx.lineWidth,
+        size - ctx.lineWidth,
+      );
+    }
   }
 }
 
@@ -373,7 +444,7 @@ export function drawFront(
   pxPerMm: number,
 ): void {
   const pxPerPt = (pxPerMm * 25.4) / 72;
-  const pad = pxPerMm * 3;
+  const pad = pxPerMm * settings.cardPaddingMm;
   const coverSize = width;
 
   fillBackground(
@@ -387,7 +458,7 @@ export function drawFront(
   );
   drawImageCover(ctx, coverImage, 0, 0, coverSize, settings, pxPerMm);
 
-  const textStartY = coverSize + pxPerMm * 3.4;
+  const textStartY = coverSize + pxPerMm * settings.coverGapMm;
   const titleFontPx = settings.titleSizePt * pxPerPt;
   const artistFontPx = settings.artistSizePt * pxPerPt;
 
@@ -397,9 +468,10 @@ export function drawFront(
   const titleAlign = settings.titleAlign as CanvasTextAlign;
   const titleX = getAlignedTextX(titleAlign, pad, width);
   ctx.font = `${settings.titleWeight} ${titleFontPx}px ${settings.fontFamily}`;
+  const displayTitle = processDisplayText(album.title, "title", settings);
   const titleBottomY = drawWrappedText(
     ctx,
-    album.title,
+    displayTitle,
     titleX,
     textStartY,
     width - pad * 2,
@@ -408,16 +480,17 @@ export function drawFront(
     titleAlign,
   );
 
+  const displayArtist = processDisplayText(album.artist || "Unknown Artist", "artist", settings);
   const artistAlign = settings.artistAlign as CanvasTextAlign;
   const artistX = getAlignedTextX(artistAlign, pad, width);
   const artistY = Math.min(
-    titleBottomY + pxPerMm * 1.2,
+    titleBottomY + pxPerMm * settings.titleArtistGapMm,
     height - artistFontPx - pxPerMm * 1.5,
   );
   ctx.font = `${settings.artistWeight} ${artistFontPx}px ${settings.fontFamily}`;
   ctx.textAlign = artistAlign;
   ctx.fillText(
-    fitText(ctx, album.artist || "Unknown Artist", width - pad * 2),
+    fitText(ctx, displayArtist, width - pad * 2),
     artistX,
     artistY,
   );
@@ -434,8 +507,8 @@ export function drawBack(
 ): void {
   const pxPerPt = (pxPerMm * 25.4) / 72;
   const reserve = BACK_RESERVED_MM * pxPerMm;
-  const pad = pxPerMm * 3;
-  const topPad = pxPerMm * 3.5;
+  const pad = pxPerMm * settings.cardPaddingMm;
+  const topPad = pxPerMm * settings.backTopPaddingMm;
   const rowGap = pxPerMm * 0.8 * settings.trackSpacing;
   const lineY = height - reserve;
 
@@ -459,9 +532,24 @@ export function drawBack(
   ctx.lineTo(width, lineY);
   ctx.stroke();
 
+  // Optional back header: album title + artist at the top
+  let headerOffset = 0;
+  if (settings.backHeaderEnabled) {
+    ctx.fillStyle = settings.textColor;
+    ctx.textBaseline = "top";
+    const headerTitlePx = settings.titleSizePt * pxPerPt * 0.7;
+    const headerArtistPx = settings.artistSizePt * pxPerPt * 0.7;
+    ctx.font = `${settings.titleWeight} ${headerTitlePx}px ${settings.fontFamily}`;
+    ctx.textAlign = "left";
+    ctx.fillText(fitText(ctx, processDisplayText(album.title, "title", settings), width - pad * 2), pad, topPad);
+    ctx.font = `${settings.artistWeight} ${headerArtistPx}px ${settings.fontFamily}`;
+    ctx.fillText(fitText(ctx, processDisplayText(album.artist || "Unknown Artist", "artist", settings), width - pad * 2), pad, topPad + headerTitlePx * 1.2);
+    headerOffset = headerTitlePx * 1.2 + headerArtistPx * 1.4;
+  }
+
   const baseTrackFontPx = settings.trackSizePt * pxPerPt;
   const minTrackFontPx = settings.backMinTrackSizePt * pxPerPt;
-  const tracksHeight = lineY - topPad - pxPerMm * 1.5;
+  const tracksHeight = lineY - (topPad + headerOffset) - pxPerMm * settings.backHeaderGapMm;
   const trackAreaWidth = width - pad * 2;
   const trackLayout = computeTrackLayout(ctx, album.tracks || [], {
     mode: settings.backOverflowMode,
@@ -484,35 +572,82 @@ export function drawBack(
   ctx.textBaseline = "top";
   ctx.font = `${settings.trackWeight} ${trackLayout.fontPx}px ${settings.fontFamily}`;
 
+  const tracksTopY = topPad + headerOffset;
+
   if (!album.tracks.length) {
     ctx.textAlign = "left";
-    ctx.fillText("Track list unavailable", pad, topPad + pxPerMm * 2);
+    ctx.fillText("Track list unavailable", pad, tracksTopY + pxPerMm * 2);
   } else {
     const visibleTracks = album.tracks.slice(0, trackLayout.visible);
-    visibleTracks.forEach((track, index) => {
-      const column = Math.floor(index / trackLayout.maxRows);
-      const row = index % trackLayout.maxRows;
-      const columnX = pad + column * (trackLayout.columnWidth + trackLayout.columnGap);
-      const y = topPad + row * trackLayout.lineHeight;
 
-      ctx.textAlign = "left";
-      const label = `${track.trackNumber}. ${track.title}`;
-      ctx.fillText(fitText(ctx, label, trackLayout.trackWidth), columnX, y);
+    // Even column distribution: balance track counts across columns
+    let rowsPerColumn: number[] = [trackLayout.maxRows];
+    if (settings.backEvenColumns && trackLayout.columns > 1) {
+      const perCol = Math.ceil(visibleTracks.length / trackLayout.columns);
+      rowsPerColumn = [];
+      let remaining = visibleTracks.length;
+      for (let c = 0; c < trackLayout.columns; c += 1) {
+        const take = Math.min(perCol, remaining);
+        rowsPerColumn.push(take);
+        remaining -= take;
+      }
+    }
 
-      ctx.textAlign = "right";
-      const duration = track.duration || formatDuration(track.durationMs ?? NaN);
-      ctx.fillText(duration, columnX + trackLayout.columnWidth, y);
-    });
+    let trackIndex = 0;
+    for (let col = 0; col < trackLayout.columns; col += 1) {
+      const maxInCol = settings.backEvenColumns && rowsPerColumn[col] !== undefined
+        ? rowsPerColumn[col]
+        : trackLayout.maxRows;
+
+      for (let row = 0; row < maxInCol && trackIndex < visibleTracks.length; row += 1) {
+        const track = visibleTracks[trackIndex];
+        const columnX = pad + col * (trackLayout.columnWidth + trackLayout.columnGap);
+        const y = tracksTopY + row * trackLayout.lineHeight;
+
+        // Format track number
+        let prefix = "";
+        if (settings.trackNumberFormat === "dot") {
+          prefix = `${track.trackNumber}. `;
+        } else if (settings.trackNumberFormat === "padded") {
+          prefix = `${String(track.trackNumber).padStart(2, "0")}. `;
+        }
+        const label = `${prefix}${processDisplayText(track.title, "track", settings)}`;
+
+        ctx.textAlign = "left";
+        if (settings.backTrackWrapEnabled) {
+          drawWrappedText(
+            ctx,
+            label,
+            columnX,
+            y,
+            trackLayout.trackWidth,
+            trackLayout.fontPx * 1.15,
+            2,
+            "left",
+          );
+        } else {
+          ctx.fillText(fitText(ctx, label, trackLayout.trackWidth), columnX, y);
+        }
+
+        if (settings.trackDurationsEnabled) {
+          ctx.textAlign = "right";
+          const duration = track.duration || formatDuration(track.durationMs ?? NaN);
+          ctx.fillText(duration, columnX + trackLayout.columnWidth, y);
+        }
+
+        trackIndex += 1;
+      }
+    }
 
     if (album.tracks.length > trackLayout.visible) {
-      const noteY = topPad + trackLayout.maxRows * trackLayout.lineHeight;
+      const noteY = tracksTopY + trackLayout.maxRows * trackLayout.lineHeight;
       if (noteY < lineY - pxPerMm * 1.2) {
         ctx.textAlign = "left";
         ctx.fillText(`+${album.tracks.length - trackLayout.visible} more`, pad, noteY);
       }
     }
 
-    if (trackLayout.columns > 1) {
+    if (trackLayout.columns > 1 && settings.backColumnDividerEnabled) {
       ctx.strokeStyle = settings.lineColor;
       ctx.lineWidth = Math.max(1, pxPerMm * 0.16);
       for (let column = 1; column < trackLayout.columns; column += 1) {
@@ -521,19 +656,10 @@ export function drawBack(
           column * trackLayout.columnWidth +
           (column - 0.5) * trackLayout.columnGap;
         ctx.beginPath();
-        ctx.moveTo(x, topPad - pxPerMm * 0.5);
+        ctx.moveTo(x, tracksTopY - pxPerMm * 0.5);
         ctx.lineTo(x, lineY - pxPerMm * 1.2);
         ctx.stroke();
       }
-    }
-
-    if (
-      trackLayout.columns > 1 ||
-      trackLayout.fontPx < baseTrackFontPx - 0.1
-    ) {
-      ctx.textAlign = "left";
-      const modeLabel = `${trackLayout.columns} col / ${(trackLayout.fontPx / pxPerPt * 1).toFixed(1)}pt`;
-      ctx.fillText(modeLabel, pad, lineY - pxPerMm * 2.3);
     }
   }
 
@@ -543,16 +669,7 @@ export function drawBack(
   const qrX = width - innerPad - qrSize;
   const qrY = lineY + innerPad + (qrBase - qrSize) / 2;
 
-  const blankX = pad;
-  const blankY = lineY + innerPad;
-  const blankWidth = width - qrBase - pad * 2 - innerPad * 1.4;
-  const blankHeight = reserve - innerPad * 2;
-
-  ctx.strokeStyle = settings.lineColor;
-  ctx.lineWidth = Math.max(1, pxPerMm * 0.2);
-  ctx.strokeRect(blankX, blankY, blankWidth, blankHeight);
-
-  if (qrImage) {
+  if (settings.qrEnabled && qrImage) {
     ctx.fillStyle = settings.qrLight;
     ctx.fillRect(qrX, qrY, qrSize, qrSize);
     ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
@@ -595,15 +712,17 @@ export function drawCardToCanvas(
   qrImage: HTMLImageElement | null,
   dpi: number,
 ): void {
-  const width = Math.round(mmToPx(CARD_WIDTH_MM, dpi));
-  const height = Math.round(mmToPx(CARD_HEIGHT_MM, dpi));
+  const cardW = settings.cardWidthMm || CARD_WIDTH_MM;
+  const cardH = settings.cardHeightMm || CARD_HEIGHT_MM;
+  const width = Math.round(mmToPx(cardW, dpi));
+  const height = Math.round(mmToPx(cardH, dpi));
   canvas.width = width;
   canvas.height = height;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  const pxPerMm = width / CARD_WIDTH_MM;
+  const pxPerMm = width / cardW;
   const radius = settings.cornerRadiusMm * pxPerMm;
 
   ctx.clearRect(0, 0, width, height);

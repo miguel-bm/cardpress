@@ -72,7 +72,6 @@ const PROVIDER_OPTIONS: { value: ProviderMode; label: string }[] = [
   { value: "auto", label: "Auto" },
   { value: "itunes", label: "iTunes" },
   { value: "musicbrainz", label: "MusicBrainz" },
-  { value: "spotify", label: "Spotify" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -349,7 +348,7 @@ export default function PrintSearch({ onAdd, disabled }: Props) {
                 </div>
 
                 <span className="flex-shrink-0 text-[10px] text-text-faint uppercase tracking-wider">
-                  {item.source === "itunes" ? "IT" : item.source === "spotify" ? "SP" : "MB"}
+                  {item.source === "itunes" ? "IT" : "MB"}
                 </span>
               </motion.li>
             ))}

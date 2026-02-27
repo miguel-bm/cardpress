@@ -25,7 +25,7 @@ Cardpress turns your digital music collection into a deck of physical **63x88 mm
 
 ## Features
 
-- **Search** albums via iTunes, MusicBrainz, or Spotify (auto-detect or manual selection)
+- **Search** albums via iTunes or MusicBrainz (auto-detect or manual selection)
 - **Design** front and back cards with a visual Style Studio
   - Typography, colors, gradients, borders, spacing
   - Built-in presets: Paper, Slate, Midnight, Rosé, Brutalist, Forest
@@ -118,11 +118,11 @@ iTunes is a trademark of Apple Inc., registered in the U.S. and other countries 
 - [MusicBrainz API](https://musicbrainz.org/doc/MusicBrainz_API)
 - [Cover Art Archive API](https://musicbrainz.org/doc/Cover_Art_Archive/API)
 
-### Spotify Web API
+### Songlink/Odesli API
 
-- [Spotify Web API docs](https://developer.spotify.com/documentation/web-api)
+- [Songlink API docs](https://odesli.co/)
 
-Spotify is a registered trademark of Spotify AB. This project uses the Spotify Web API for album search and metadata; it is not affiliated with, endorsed by, or sponsored by Spotify AB. A Spotify client ID and secret are required in the Worker environment for Spotify search to work.
+Used to resolve iTunes/MusicBrainz album URLs to their Spotify equivalents for NFC tag ID generation. Free, no authentication required.
 
 ## License
 

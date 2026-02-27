@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import type { AlbumDetail } from "../lib/types";
+import { enrichWithSpotifyId } from "../lib/api";
 import HaSetupSection from "../components/HaSetupSection";
 
 // ---------------------------------------------------------------------------
@@ -130,6 +131,8 @@ export default function WriteTagsPage() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareQrDataUrl, setShareQrDataUrl] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false);
+  const enrichRanRef = useRef(false);
 
   // Load data from localStorage on mount
   useEffect(() => {
@@ -149,6 +152,39 @@ export default function WriteTagsPage() {
       })
       .catch(() => setError("Failed to load shared album list"));
   }, []);
+
+  // Enrich albums missing spotifyId via Songlink
+  useEffect(() => {
+    if (albums.length === 0 || enrichRanRef.current) return;
+    const needEnrichment = albums.some((a) => !a.spotifyId);
+    if (!needEnrichment) return;
+
+    enrichRanRef.current = true;
+    setIsEnriching(true);
+    let cancelled = false;
+
+    (async () => {
+      const enriched = [...albums];
+      let changed = false;
+      for (let i = 0; i < enriched.length; i++) {
+        if (cancelled) break;
+        if (enriched[i].spotifyId) continue;
+        const updated = await enrichWithSpotifyId(enriched[i]);
+        if (updated.spotifyId) {
+          enriched[i] = updated;
+          changed = true;
+        }
+      }
+      if (!cancelled && changed) {
+        setAlbums(enriched);
+        // Persist enriched results back to localStorage
+        localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(enriched));
+      }
+      if (!cancelled) setIsEnriching(false);
+    })();
+
+    return () => { cancelled = true; };
+  }, [albums]);
 
   // Persist written set whenever it changes
   const markWritten = useCallback((tagId: string) => {
@@ -286,6 +322,14 @@ export default function WriteTagsPage() {
               }}
             />
           </div>
+        </div>
+      )}
+
+      {/* Enrichment progress */}
+      {isEnriching && (
+        <div className="mb-6 flex items-center gap-2 text-sm text-text-muted">
+          <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+          Fetching Spotify IDs...
         </div>
       )}
 

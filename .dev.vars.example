@@ -1,8 +1,0 @@
-# Spotify Web API credentials (Client Credentials flow)
-# Create an app at https://developer.spotify.com/dashboard
-# 1. Log in with your Spotify account
-# 2. Click "Create app"
-# 3. Set any name/description, no redirect URI needed
-# 4. Copy the Client ID and Client Secret
-SPOTIFY_CLIENT_ID=your_client_id_here
-SPOTIFY_CLIENT_SECRET=your_client_secret_here

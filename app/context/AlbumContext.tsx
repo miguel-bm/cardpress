@@ -16,7 +16,7 @@ export function AlbumProvider({ children }: { children: ReactNode }) {
 
   const [provider, setProviderState] = useState<ProviderMode>(() => {
     const stored = localStorage.getItem(PROVIDER_STORAGE_KEY);
-    if (stored === "musicbrainz" || stored === "spotify" || stored === "auto") return stored;
+    if (stored === "musicbrainz" || stored === "auto") return stored;
     return "itunes";
   });
 

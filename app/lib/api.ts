@@ -116,6 +116,33 @@ export async function fetchAlbum(
   return payload.album;
 }
 
+/** Enrich an album with a Spotify ID via Songlink if it doesn't already have one.
+ *  iTunes albums: resolved directly via Apple Music URL.
+ *  MusicBrainz albums: resolved by searching iTunes for the same title+artist first. */
+export async function enrichWithSpotifyId(album: AlbumDetail): Promise<AlbumDetail> {
+  if (album.spotifyId) return album;
+
+  const params = new URLSearchParams();
+
+  if (album.source === "itunes") {
+    params.set("url", `https://music.apple.com/album/${album.id}`);
+  } else {
+    // MusicBrainz or other sources: use title+artist search via iTunes → Songlink
+    params.set("title", album.title);
+    if (album.artist) params.set("artist", album.artist);
+  }
+
+  try {
+    const resp = await fetch(`/api/enrich-spotify?${params.toString()}`);
+    const data = await resp.json() as { spotify: { spotifyId: string; spotifyUrl: string } | null };
+    if (data.spotify) {
+      return { ...album, spotifyId: data.spotify.spotifyId, spotifyUrl: data.spotify.spotifyUrl };
+    }
+  } catch { /* best effort */ }
+
+  return album;
+}
+
 /** Fetch a single album by title+artist text via `/api/album-by-text` */
 export async function fetchAlbumByText(
   title: string,

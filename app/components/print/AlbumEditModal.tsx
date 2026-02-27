@@ -2,6 +2,12 @@ import { useState, useEffect } from "react";
 import type { AlbumDetail, TrackItem } from "../../lib/types";
 import Modal from "../ui/Modal";
 
+/** AlbumDetail extended with per-album QR override fields that live on the print-queue object at runtime. */
+type EditableAlbum = AlbumDetail & {
+  qrContentOverride?: string;
+  qrCustomTextOverride?: string;
+};
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -10,14 +16,14 @@ interface Props {
 }
 
 export default function AlbumEditModal({ open, onClose, album, onSave }: Props) {
-  const [draft, setDraft] = useState<AlbumDetail>(album);
+  const [draft, setDraft] = useState<EditableAlbum>(album as EditableAlbum);
 
   // Reset draft when album prop changes
   useEffect(() => {
-    setDraft(album);
+    setDraft(album as EditableAlbum);
   }, [album]);
 
-  function updateField<K extends keyof AlbumDetail>(key: K, value: AlbumDetail[K]) {
+  function updateField<K extends keyof EditableAlbum>(key: K, value: EditableAlbum[K]) {
     setDraft((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -68,6 +74,8 @@ export default function AlbumEditModal({ open, onClose, album, onSave }: Props) 
   }
 
   function handleSave() {
+    // EditableAlbum is a superset of AlbumDetail — the extra QR fields
+    // travel along and are preserved on the queue object at runtime.
     onSave(draft);
     onClose();
   }
@@ -191,6 +199,78 @@ export default function AlbumEditModal({ open, onClose, album, onSave }: Props) 
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Spotify & QR */}
+        <div>
+          <label className="block text-xs font-medium text-text-muted mb-2">
+            Spotify &amp; QR
+          </label>
+
+          <div className="space-y-3">
+            {/* Spotify Album ID */}
+            <div>
+              <label className="block text-xs font-medium text-text-muted mb-1.5">
+                Spotify Album ID
+              </label>
+              <input
+                type="text"
+                value={draft.spotifyId ?? ""}
+                onChange={(e) => updateField("spotifyId", e.target.value)}
+                placeholder="e.g. 4aawyAB9vmqN3uQ7FjRGTy"
+                className={inputClass}
+              />
+            </div>
+
+            {/* Discogs URL */}
+            <div>
+              <label className="block text-xs font-medium text-text-muted mb-1.5">
+                Discogs URL
+              </label>
+              <input
+                type="text"
+                value={draft.discogsUrl ?? ""}
+                onChange={(e) => updateField("discogsUrl", e.target.value)}
+                placeholder="https://www.discogs.com/release/..."
+                className={inputClass}
+              />
+            </div>
+
+            {/* QR Content Override */}
+            <div>
+              <label className="block text-xs font-medium text-text-muted mb-1.5">
+                QR Content Override
+              </label>
+              <select
+                value={draft.qrContentOverride ?? ""}
+                onChange={(e) => updateField("qrContentOverride", e.target.value)}
+                className={inputClass}
+              >
+                <option value="">Use global setting</option>
+                <option value="title">Title</option>
+                <option value="spotify">Spotify Link</option>
+                <option value="ha-tag">HA Tag</option>
+                <option value="discogs">Discogs</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+
+            {/* Custom QR Text — visible only when override is "custom" */}
+            {draft.qrContentOverride === "custom" && (
+              <div>
+                <label className="block text-xs font-medium text-text-muted mb-1.5">
+                  Custom QR Text
+                </label>
+                <input
+                  type="text"
+                  value={draft.qrCustomTextOverride ?? ""}
+                  onChange={(e) => updateField("qrCustomTextOverride", e.target.value)}
+                  placeholder="Enter custom QR content..."
+                  className={inputClass}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

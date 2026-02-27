@@ -9,6 +9,7 @@ import StylePicker from "../components/print/StylePicker";
 import PrintOptionsModal from "../components/print/PrintOptionsModal";
 import AlbumEditModal from "../components/print/AlbumEditModal";
 import CsvImportModal from "../components/print/CsvImportModal";
+import QuickAddModal from "../components/print/QuickAddModal";
 import type { AlbumDetail } from "../lib/types";
 
 // ---------------------------------------------------------------------------
@@ -47,6 +48,7 @@ export default function PrintPage() {
   // Modal states
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
+  const [showQuickAddModal, setShowQuickAddModal] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
 
   // Persist queue to localStorage on every change
@@ -99,8 +101,8 @@ export default function PrintPage() {
     [editIndex],
   );
 
-  // CSV import
-  const handleCsvImport = useCallback((imported: AlbumDetail[]) => {
+  // CSV / Quick Add import
+  const handleBulkImport = useCallback((imported: AlbumDetail[]) => {
     setAlbums((prev) => [...prev, ...imported]);
   }, []);
 
@@ -141,29 +143,57 @@ export default function PrintPage() {
                 Search albums, build your queue, and generate a duplex-ready PDF.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowCsvModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-text-muted hover:text-text hover:border-text-muted transition-all flex-shrink-0"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowQuickAddModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-text-muted hover:text-text hover:border-text-muted transition-all"
               >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              Import CSV
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+                Quick Add
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCsvModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-text-muted hover:text-text hover:border-text-muted transition-all"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                Import CSV
+              </button>
+            </div>
           </div>
 
           <PrintSearch onAdd={handleAdd} disabled={isGenerating} />
@@ -223,7 +253,13 @@ export default function PrintPage() {
       <CsvImportModal
         open={showCsvModal}
         onClose={() => setShowCsvModal(false)}
-        onImport={handleCsvImport}
+        onImport={handleBulkImport}
+      />
+
+      <QuickAddModal
+        open={showQuickAddModal}
+        onClose={() => setShowQuickAddModal(false)}
+        onImport={handleBulkImport}
       />
     </div>
   );
